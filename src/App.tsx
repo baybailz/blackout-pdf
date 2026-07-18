@@ -3,7 +3,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import Landing from "./components/Landing.tsx";
 import Editor from "./components/Editor.tsx";
 import { loadPdf } from "./pdf/loader.ts";
-import { activateFromCheckoutRedirect } from "./license.ts";
+import { activateFromCheckoutRedirect, isPro } from "./license.ts";
 
 export interface LoadedDoc {
   doc: PDFDocumentProxy;
@@ -15,9 +15,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justActivated, setJustActivated] = useState(false);
+  const [pro, setPro] = useState(isPro());
 
   useEffect(() => {
-    if (activateFromCheckoutRedirect()) setJustActivated(true);
+    if (activateFromCheckoutRedirect()) {
+      setJustActivated(true);
+      setPro(true);
+    }
   }, []);
 
   const openFile = useCallback(async (file: File) => {
@@ -50,7 +54,7 @@ export default function App() {
           ✓ Pro activated on this device — unlimited pages. Thank you!
         </div>
       )}
-      <Landing onFile={openFile} loading={loading} error={error} />
+      <Landing onFile={openFile} loading={loading} error={error} pro={pro} />
     </>
   );
 }

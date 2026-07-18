@@ -9,4 +9,9 @@ export default defineConfig({
   build: {
     target: "es2022",
   },
+  preview: {
+    // Allow previewing across the LAN/tailnet without committing hostnames:
+    // PREVIEW_ALLOW=my.host npx vite preview --host 0.0.0.0
+    allowedHosts: process.env.PREVIEW_ALLOW ? [process.env.PREVIEW_ALLOW] : [],
+  },
 });

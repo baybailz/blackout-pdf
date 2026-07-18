@@ -49,6 +49,45 @@ a {
   padding: 12px 20px;
 }
 
+/* ---------- pro home (paid users: tool, not pitch) ---------- */
+
+.pro-home {
+  min-height: 100vh;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pro-chip {
+  background: var(--amber);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.pro-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  padding-bottom: 12vh;
+}
+
+.pro-main .dropzone {
+  width: 100%;
+}
+
+.pro-main .trust-row {
+  margin-top: 0;
+}
+
 .landing {
   max-width: 920px;
   margin: 0 auto;

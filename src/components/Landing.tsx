@@ -11,6 +11,7 @@ interface Props {
   onFile: (f: File) => void;
   loading: boolean;
   error: string | null;
+  pro?: boolean;
 }
 
 // A word hidden under a marker swipe; hovering (or focusing) peels the bar
@@ -52,7 +53,7 @@ const FAQ: [string, string][] = [
   ],
 ];
 
-export default function Landing({ onFile, loading, error }: Props) {
+export default function Landing({ onFile, loading, error, pro }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -69,6 +70,68 @@ export default function Landing({ onFile, loading, error }: Props) {
   const proHref =
     CHECKOUT_URL ??
     `mailto:${CONTACT_EMAIL}?subject=Blackout%20PDF%20Pro%20waitlist`;
+
+  const dropzone = (
+    <div
+      className={`dropzone${dragOver ? " over" : ""}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
+      onClick={() => inputRef.current?.click()}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      {loading ? (
+        <span className="dz-main">Opening…</span>
+      ) : (
+        <>
+          <span className="dz-main">Drop a PDF — it stays here</span>
+          <span className="dz-sub">
+            {pro
+              ? "or click to choose · unlimited pages"
+              : `or click to choose · free up to ${FREE_PAGE_LIMIT} pages · no signup`}
+          </span>
+        </>
+      )}
+    </div>
+  );
+
+  // Paying users get the tool, not the pitch: logo, dropzone, done.
+  if (pro) {
+    return (
+      <div className="pro-home">
+        <header className="site-header">
+          <div className="logo">
+            <span className="logo-mark" /> {PRODUCT_NAME}
+            <span className="pro-chip">PRO</span>
+          </div>
+        </header>
+        <main className="pro-main">
+          {dropzone}
+          {error && <p className="error">{error}</p>}
+          <p className="trust-row">
+            Nothing leaves your device — as always. ·{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`}>support</a>
+          </p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="landing">
@@ -93,42 +156,7 @@ export default function Landing({ onFile, loading, error }: Props) {
           browser. No uploads. No account. No trace.
         </p>
 
-        <div
-          className={`dropzone${dragOver ? " over" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onFile(f);
-              e.target.value = "";
-            }}
-          />
-          {loading ? (
-            <span className="dz-main">Opening…</span>
-          ) : (
-            <>
-              <span className="dz-main">Drop a PDF — it stays here</span>
-              <span className="dz-sub">
-                or click to choose · free up to {FREE_PAGE_LIMIT} pages · no
-                signup
-              </span>
-            </>
-          )}
-        </div>
+        {dropzone}
         {error && <p className="error">{error}</p>}
 
         <p className="trust-row">
