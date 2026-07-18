@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import Landing from "./components/Landing.tsx";
 import Editor from "./components/Editor.tsx";
 import { loadPdf } from "./pdf/loader.ts";
+import { activateFromCheckoutRedirect } from "./license.ts";
 
 export interface LoadedDoc {
   doc: PDFDocumentProxy;
@@ -13,6 +14,11 @@ export default function App() {
   const [loaded, setLoaded] = useState<LoadedDoc | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justActivated, setJustActivated] = useState(false);
+
+  useEffect(() => {
+    if (activateFromCheckoutRedirect()) setJustActivated(true);
+  }, []);
 
   const openFile = useCallback(async (file: File) => {
     setError(null);
@@ -38,6 +44,13 @@ export default function App() {
   return loaded ? (
     <Editor key={loaded.filename} loaded={loaded} onClose={reset} />
   ) : (
-    <Landing onFile={openFile} loading={loading} error={error} />
+    <>
+      {justActivated && (
+        <div className="activated-banner">
+          ✓ Pro activated on this device — unlimited pages. Thank you!
+        </div>
+      )}
+      <Landing onFile={openFile} loading={loading} error={error} />
+    </>
   );
 }

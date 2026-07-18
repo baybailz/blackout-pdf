@@ -13,6 +13,11 @@ interface Props {
   onActivated: () => void;
 }
 
+// Stripe payment links redirect back with ?checkout=success to unlock Pro, so
+// there is no license key to type. The key input only renders for key-based
+// checkout providers (e.g. Lemon Squeezy).
+const KEYLESS_CHECKOUT = CHECKOUT_URL?.includes("stripe.com") ?? false;
+
 export default function UpgradeModal({ pageCount, onClose, onActivated }: Props) {
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,9 +42,21 @@ export default function UpgradeModal({ pageCount, onClose, onActivated }: Props)
           browser.
         </p>
         {CHECKOUT_URL ? (
-          <a className="btn" href={CHECKOUT_URL} target="_blank" rel="noreferrer">
-            Get Pro — {PRO_PRICE_LABEL} one-time
-          </a>
+          <>
+            <a className="btn" href={CHECKOUT_URL}>
+              Get Pro — {PRO_PRICE_LABEL} one-time
+            </a>
+            {KEYLESS_CHECKOUT && (
+              <p className="meta">
+                You'll be sent back here after payment and Pro unlocks
+                automatically. Bought it on another device? Email{" "}
+                <a href={`mailto:${CONTACT_EMAIL}?subject=Blackout%20PDF%20Pro%20activation`}>
+                  {CONTACT_EMAIL}
+                </a>{" "}
+                with your receipt and we'll sort it fast.
+              </p>
+            )}
+          </>
         ) : (
           <a
             className="btn"
@@ -48,18 +65,22 @@ export default function UpgradeModal({ pageCount, onClose, onActivated }: Props)
             Pro launches soon — join the waitlist
           </a>
         )}
-        <div className="license-row">
-          <input
-            placeholder="Already have a license key?"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && activate()}
-          />
-          <button className="mini-btn" disabled={busy} onClick={activate}>
-            {busy ? "…" : "Activate"}
-          </button>
-        </div>
-        {msg && <p className="meta">{msg}</p>}
+        {!KEYLESS_CHECKOUT && (
+          <>
+            <div className="license-row">
+              <input
+                placeholder="Already have a license key?"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && activate()}
+              />
+              <button className="mini-btn" disabled={busy} onClick={activate}>
+                {busy ? "…" : "Activate"}
+              </button>
+            </div>
+            {msg && <p className="meta">{msg}</p>}
+          </>
+        )}
         <button className="link-btn close" onClick={onClose}>
           Not now
         </button>

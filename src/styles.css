@@ -40,6 +40,15 @@ a {
 
 /* ---------- landing ---------- */
 
+.activated-banner {
+  background: var(--ink);
+  color: var(--amber);
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 12px 20px;
+}
+
 .landing {
   max-width: 920px;
   margin: 0 auto;

@@ -10,9 +10,10 @@ export const FREE_PAGE_LIMIT = 10;
 
 export const PRO_PRICE_LABEL = "$29";
 
-// Checkout link for the Pro lifetime license. Create a product on
-// Lemon Squeezy (or Stripe payment link) and paste its URL here.
-// While null, the Pro buttons show a "coming soon" waitlist mailto instead.
+// Checkout link for the Pro lifetime license (Stripe payment link,
+// https://buy.stripe.com/...). The payment link's after-payment setting must
+// redirect to <site>/?checkout=success&session_id={CHECKOUT_SESSION_ID} so Pro
+// auto-activates. While null, Pro buttons show a waitlist mailto instead.
 export const CHECKOUT_URL: string | null = null;
 
 // Lemon Squeezy license validation (their /v1/licenses/validate endpoint is

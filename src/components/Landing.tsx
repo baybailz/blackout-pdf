@@ -202,7 +202,9 @@ export default function Landing({ onFile, loading, error }: Props) {
               <li>Lifetime updates</li>
               <li>Priority email support</li>
             </ul>
-            <a className="btn" href={proHref} target="_blank" rel="noreferrer">
+            {/* same-tab on purpose: the post-payment redirect must land back
+                in this tab to auto-activate Pro */}
+            <a className="btn" href={proHref}>
               {CHECKOUT_URL ? "Get Pro" : "Join the Pro waitlist"}
             </a>
           </div>

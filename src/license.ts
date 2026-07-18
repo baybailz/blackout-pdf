@@ -2,6 +2,26 @@ import { LICENSE_VALIDATE_URL } from "./config.ts";
 
 const STORAGE_KEY = "blackout-pdf-license";
 
+// Stripe flow: the payment link redirects back here with
+// ?checkout=success&session_id=cs_live_... after purchase. Unlock Pro on this
+// device and scrub the params from the URL. No backend to verify against —
+// acceptable for a $29 client-side tool whose source is public anyway.
+export function activateFromCheckoutRedirect(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get("session_id");
+  const success = params.get("checkout") === "success";
+  if (success || (sid && /^cs_(live|test)_/.test(sid))) {
+    try {
+      localStorage.setItem(STORAGE_KEY, "stripe:" + (sid ?? "receipt"));
+    } catch {
+      return false;
+    }
+    history.replaceState(null, "", window.location.pathname);
+    return true;
+  }
+  return false;
+}
+
 export function getStoredLicense(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY);
