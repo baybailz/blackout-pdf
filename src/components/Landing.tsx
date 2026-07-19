@@ -29,7 +29,7 @@ function Redacted({ children }: { children: string }) {
 const FAQ: [string, string][] = [
   [
     "Is my PDF uploaded anywhere?",
-    "No. The entire tool — rendering, detection, redaction, export — runs in your browser using JavaScript. There is no server component and no file upload. You can load the page, disconnect from the internet, and it still works.",
+    "No. Everything happens on your own computer, inside your browser. There's no upload, no account, and no company server holding your files. You can even load this page, turn off your Wi-Fi, and keep working.",
   ],
   [
     "Is the redacted text really gone?",
@@ -41,7 +41,7 @@ const FAQ: [string, string][] = [
   ],
   [
     "Does it work on scanned PDFs?",
-    "Auto-detection needs a text layer, so scans without OCR won't produce suggestions — but manual redaction boxes work on any PDF, scanned or not.",
+    "Automatic detection works on PDFs with selectable text (if you can highlight the words, it works). For scans that are essentially photos of paper, automatic search can't read them — but you can still draw redaction boxes anywhere by hand, on any PDF.",
   ],
   [
     "What's the catch with the free version?",
@@ -165,22 +165,23 @@ export default function Landing({ onFile, loading, error, pro }: Props) {
         <div>
           <h3>1 · Open</h3>
           <p>
-            Drop in any PDF. It's parsed locally with Mozilla's pdf.js — the
-            same engine Firefox uses.
+            Drop in any PDF. It opens right here in your browser and is never
+            sent anywhere.
           </p>
         </div>
         <div>
           <h3>2 · Review</h3>
           <p>
-            Sensitive data is highlighted automatically. Click to confirm each
-            one, add custom terms, or drag boxes anywhere.
+            Sensitive details are highlighted automatically. Click to confirm
+            each one, search for any name or word, or drag a box over anything
+            else.
           </p>
         </div>
         <div>
-          <h3>3 · Export</h3>
+          <h3>3 · Download</h3>
           <p>
-            Pages are rebuilt as flat images with redactions burned in. The
-            text underneath is gone — not hidden.
+            Your redacted copy downloads instantly. The blacked-out
+            information is permanently removed — not just covered up.
           </p>
         </div>
       </section>
@@ -188,16 +189,17 @@ export default function Landing({ onFile, loading, error, pro }: Props) {
       <section className="why">
         <h2>A black rectangle is not a redaction</h2>
         <p>
-          Court filings, leaked contracts, botched FOIA releases — the classic
-          failure is a PDF where the "redacted" text is still there under a
-          drawn rectangle, one copy-paste away. Blackout doesn't cover text; it
-          re-renders each page and throws the original text layer away. What you
-          export is what everyone gets, and nothing more.
+          Court filings, leaked contracts, botched public-records releases —
+          the classic mistake is a PDF where the "redacted" text is still
+          sitting under a drawn rectangle, and anyone can copy and paste right
+          through it. Blackout doesn't cover information up; it rebuilds each
+          page with the sensitive text permanently removed. What you download
+          is what everyone gets, and nothing more.
         </p>
         <p>
-          And because everything runs client-side, you're not trading one leak
-          for another by uploading a sensitive document to someone's server to
-          "secure" it.
+          And you never have to upload a private document to a stranger's
+          website just to black things out. Blackout does all its work on your
+          own computer — the file never goes anywhere.
         </p>
       </section>
 
