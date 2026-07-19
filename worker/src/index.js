@@ -143,12 +143,57 @@ async function restore(env, body, ctx) {
   });
 }
 
+// GET /health — proves configuration without exposing secrets: signs a probe
+// and verifies it with the public half derived from the same JWK (x/y are
+// public by definition), and makes one read-only Stripe call. Returns the
+// public coordinates so the site's embedded key can be compared.
+async function health(env) {
+  const out = { signing: false, stripe: false, pub: null };
+  try {
+    const jwk = JSON.parse(env.LICENSE_SIGNING_KEY);
+    const token = await signToken(env, { probe: true });
+    const pub = { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y };
+    const pubKey = await crypto.subtle.importKey(
+      "jwk",
+      pub,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"],
+    );
+    const [p, s] = token.split(".");
+    const fromB64 = (v) =>
+      Uint8Array.from(
+        atob(v.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (v.length % 4)) % 4)),
+        (c) => c.charCodeAt(0),
+      );
+    out.signing = await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      pubKey,
+      fromB64(s),
+      fromB64(p),
+    );
+    out.pub = { x: jwk.x, y: jwk.y };
+  } catch {
+    /* signing stays false */
+  }
+  try {
+    await stripeGet(env, "/v1/customers?limit=1");
+    out.stripe = true;
+  } catch {
+    /* stripe stays false */
+  }
+  return json(env, out.signing && out.stripe ? 200 : 500, out);
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(env) });
     }
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/health") {
+      return health(env);
+    }
     if (request.method !== "POST") {
       return json(env, 405, { error: "POST only" });
     }
