@@ -1,0 +1,12 @@
+name = "blackout-license"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+[vars]
+SITE_URL = "https://blackout.thrain.ai"
+ALLOWED_ORIGIN = "https://blackout.thrain.ai"
+
+# Secrets (set via `wrangler secret put <NAME>` or the dashboard — never here):
+#   STRIPE_SECRET_KEY   restricted key: read-only Checkout Sessions + Customers
+#   LICENSE_SIGNING_KEY ECDSA P-256 private JWK
+#   RESEND_API_KEY      optional, enables /restore emails

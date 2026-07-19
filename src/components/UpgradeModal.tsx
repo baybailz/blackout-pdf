@@ -4,32 +4,28 @@ import {
   CONTACT_EMAIL,
   FREE_PAGE_LIMIT,
   PRO_PRICE_LABEL,
+  WORKER_URL,
 } from "../config.ts";
-import { activateLicense } from "../license.ts";
+import { requestRestoreEmail } from "../license.ts";
 
 interface Props {
   pageCount: number;
   onClose: () => void;
-  onActivated: () => void;
+  onActivated: () => void; // reserved for future in-modal activation paths
 }
 
-// Stripe payment links redirect back with ?checkout=success to unlock Pro, so
-// there is no license key to type. The key input only renders for key-based
-// checkout providers (e.g. Lemon Squeezy).
-const KEYLESS_CHECKOUT = CHECKOUT_URL?.includes("stripe.com") ?? false;
-
-export default function UpgradeModal({ pageCount, onClose, onActivated }: Props) {
-  const [key, setKey] = useState("");
+export default function UpgradeModal({ pageCount, onClose }: Props) {
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [showRestore, setShowRestore] = useState(false);
 
-  const activate = async () => {
+  const restore = async () => {
     setBusy(true);
     setMsg(null);
-    const res = await activateLicense(key);
+    const res = await requestRestoreEmail(email.trim());
     setBusy(false);
     setMsg(res.message);
-    if (res.ok) setTimeout(onActivated, 800);
   };
 
   return (
@@ -46,16 +42,10 @@ export default function UpgradeModal({ pageCount, onClose, onActivated }: Props)
             <a className="btn" href={CHECKOUT_URL}>
               Get Pro — {PRO_PRICE_LABEL} one-time
             </a>
-            {KEYLESS_CHECKOUT && (
-              <p className="meta">
-                You'll be sent back here after payment and Pro unlocks
-                automatically. Bought it on another device? Email{" "}
-                <a href={`mailto:${CONTACT_EMAIL}?subject=Blackout%20PDF%20Pro%20activation`}>
-                  {CONTACT_EMAIL}
-                </a>{" "}
-                with your receipt and we'll sort it fast.
-              </p>
-            )}
+            <p className="meta">
+              You'll be sent back here after payment and Pro unlocks
+              automatically.
+            </p>
           </>
         ) : (
           <a
@@ -65,22 +55,41 @@ export default function UpgradeModal({ pageCount, onClose, onActivated }: Props)
             Pro launches soon — join the waitlist
           </a>
         )}
-        {!KEYLESS_CHECKOUT && (
-          <>
-            <div className="license-row">
-              <input
-                placeholder="Already have a license key?"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && activate()}
-              />
-              <button className="mini-btn" disabled={busy} onClick={activate}>
-                {busy ? "…" : "Activate"}
-              </button>
-            </div>
-            {msg && <p className="meta">{msg}</p>}
-          </>
+
+        {WORKER_URL ? (
+          showRestore ? (
+            <>
+              <div className="license-row">
+                <input
+                  type="email"
+                  placeholder="Email you purchased with"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && restore()}
+                />
+                <button className="mini-btn" disabled={busy} onClick={restore}>
+                  {busy ? "…" : "Send link"}
+                </button>
+              </div>
+              {msg && <p className="meta">{msg}</p>}
+            </>
+          ) : (
+            <button className="link-btn" onClick={() => setShowRestore(true)}>
+              Already bought Pro? Restore your purchase
+            </button>
+          )
+        ) : (
+          <p className="meta">
+            Bought it on another device? Email{" "}
+            <a
+              href={`mailto:${CONTACT_EMAIL}?subject=Blackout%20PDF%20Pro%20activation`}
+            >
+              {CONTACT_EMAIL}
+            </a>{" "}
+            with your receipt and we'll sort it fast.
+          </p>
         )}
+
         <button className="link-btn close" onClick={onClose}>
           Not now
         </button>

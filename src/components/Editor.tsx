@@ -5,13 +5,14 @@ import { findSuggestions } from "../pdf/textSearch.ts";
 import { exportRedacted, downloadBytes } from "../pdf/exporter.ts";
 import { PATTERNS, CUSTOM_PATTERN_ID } from "../pdf/patterns.ts";
 import { FREE_PAGE_LIMIT } from "../config.ts";
-import { isPro } from "../license.ts";
 import PageView from "./PageView.tsx";
 import UpgradeModal from "./UpgradeModal.tsx";
 
 interface Props {
   loaded: LoadedDoc;
   onClose: () => void;
+  pro: boolean;
+  onActivated: () => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
@@ -24,7 +25,7 @@ const suggestionKey = (s: Suggestion) =>
 
 let boxId = 0;
 
-export default function Editor({ loaded, onClose }: Props) {
+export default function Editor({ loaded, onClose, pro, onActivated }: Props) {
   const { doc, filename } = loaded;
   const [pages, setPages] = useState<PageInfo[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -34,7 +35,6 @@ export default function Editor({ loaded, onClose }: Props) {
   const [scanning, setScanning] = useState(true);
   const [exporting, setExporting] = useState<null | { done: number; total: number }>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [pro, setPro] = useState(isPro());
   const acceptedKeys = useRef(new Set<string>());
 
   // Scan (and re-scan when custom terms change), preserving accepted state.
@@ -258,7 +258,7 @@ export default function Editor({ loaded, onClose }: Props) {
           pageCount={doc.numPages}
           onClose={() => setShowUpgrade(false)}
           onActivated={() => {
-            setPro(true);
+            onActivated();
             setShowUpgrade(false);
           }}
         />

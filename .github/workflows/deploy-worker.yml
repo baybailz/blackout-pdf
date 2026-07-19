@@ -1,0 +1,24 @@
+name: Deploy license worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Requires the CLOUDFLARE_API_TOKEN repo secret ("Edit Cloudflare Workers"
+    # template). Until it exists, this job is skipped rather than failing.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy with wrangler
+        if: ${{ vars.WORKER_DEPLOY_ENABLED == 'true' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: worker
+      - name: Skipped notice
+        if: ${{ vars.WORKER_DEPLOY_ENABLED != 'true' }}
+        run: echo "Worker deploy skipped — set repo variable WORKER_DEPLOY_ENABLED=true and add CLOUDFLARE_API_TOKEN secret."

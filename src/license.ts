@@ -1,28 +1,57 @@
-import { LICENSE_VALIDATE_URL } from "./config.ts";
+import { LICENSE_PUBLIC_KEY, WORKER_URL } from "./config.ts";
 
 const STORAGE_KEY = "blackout-pdf-license";
 
-// Stripe flow: the payment link redirects back here with
-// ?checkout=success&session_id=cs_live_... after purchase. Unlock Pro on this
-// device and scrub the params from the URL. No backend to verify against —
-// acceptable for a $25 client-side tool whose source is public anyway.
-export function activateFromCheckoutRedirect(): boolean {
-  const params = new URLSearchParams(window.location.search);
-  const sid = params.get("session_id");
-  const success = params.get("checkout") === "success";
-  if (success || (sid && /^cs_(live|test)_/.test(sid))) {
-    try {
-      localStorage.setItem(STORAGE_KEY, "stripe:" + (sid ?? "receipt"));
-    } catch {
-      return false;
-    }
-    history.replaceState(null, "", window.location.pathname);
-    return true;
-  }
-  return false;
+// ---------------------------------------------------------------------------
+// Signed-token verification (the real licensing path, once WORKER_URL is set).
+// Token format: base64url(JSON payload) + "." + base64url(ECDSA-P256 sig).
+// The private key lives only in the worker; we hold the public half.
+// ---------------------------------------------------------------------------
+
+function b64urlToBytes(s: string): Uint8Array {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
-export function getStoredLicense(): string | null {
+let pubKeyPromise: Promise<CryptoKey> | null = null;
+function publicKey(): Promise<CryptoKey> {
+  pubKeyPromise ??= crypto.subtle.importKey(
+    "jwk",
+    LICENSE_PUBLIC_KEY,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["verify"],
+  );
+  return pubKeyPromise;
+}
+
+export async function verifyToken(
+  token: string,
+): Promise<{ valid: boolean; email?: string }> {
+  try {
+    const [payloadB64, sigB64] = token.split(".");
+    if (!payloadB64 || !sigB64) return { valid: false };
+    const payload = b64urlToBytes(payloadB64);
+    const ok = await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      await publicKey(),
+      b64urlToBytes(sigB64) as BufferSource,
+      payload as BufferSource,
+    );
+    if (!ok) return { valid: false };
+    const data = JSON.parse(new TextDecoder().decode(payload));
+    return { valid: true, email: data.e ?? undefined };
+  } catch {
+    return { valid: false };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Storage
+// ---------------------------------------------------------------------------
+
+function stored(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY);
   } catch {
@@ -30,37 +59,114 @@ export function getStoredLicense(): string | null {
   }
 }
 
-export function isPro(): boolean {
-  return getStoredLicense() !== null;
+function store(value: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* private mode etc. — Pro just won't persist */
+  }
 }
 
-// Validates against the Lemon Squeezy public license endpoint. Once a Pro
-// product exists (docs/MONETIZATION.md), keys sold there validate here with no
-// backend of our own.
-export async function activateLicense(
-  key: string,
-): Promise<{ ok: boolean; message: string }> {
-  const trimmed = key.trim();
-  if (!trimmed) return { ok: false, message: "Enter a license key." };
+// ---------------------------------------------------------------------------
+// Activation paths
+// ---------------------------------------------------------------------------
+
+async function activateSessionWithWorker(sid: string): Promise<boolean> {
   try {
-    const res = await fetch(LICENSE_VALIDATE_URL, {
+    const res = await fetch(`${WORKER_URL}/activate`, {
       method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ license_key: trimmed }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid }),
     });
     const data = await res.json();
-    if (data?.valid) {
-      localStorage.setItem(STORAGE_KEY, trimmed);
-      return { ok: true, message: "Pro activated. Thank you!" };
+    if (res.ok && data.token) {
+      store(data.token);
+      return true;
     }
+  } catch {
+    /* worker unreachable — treated as not activated */
+  }
+  return false;
+}
+
+// Handles every way a page load can carry a license:
+//   ?checkout=success&session_id=...  (Stripe post-payment redirect)
+//   ?license_token=...                (restore-purchase email link)
+// Returns true if Pro was newly activated by this load.
+export async function activateFromUrl(): Promise<boolean> {
+  const params = new URLSearchParams(window.location.search);
+  const scrub = () =>
+    history.replaceState(null, "", window.location.pathname);
+
+  const linkToken = params.get("license_token");
+  if (linkToken) {
+    scrub();
+    if ((await verifyToken(linkToken)).valid) {
+      store(linkToken);
+      return true;
+    }
+    return false;
+  }
+
+  const sid = params.get("session_id");
+  const success = params.get("checkout") === "success";
+  if (!sid && !success) return false;
+  scrub();
+
+  if (WORKER_URL) {
+    // Real path: only Stripe's word (via the worker) mints a license.
+    return sid ? activateSessionWithWorker(sid) : false;
+  }
+
+  // Launch-era fallback (no worker deployed): honor-system unlock.
+  if (success || (sid && /^cs_(live|test)_/.test(sid))) {
+    store("stripe:" + (sid ?? "receipt"));
+    return true;
+  }
+  return false;
+}
+
+// Is this device licensed? Verifies the stored signed token; transparently
+// upgrades legacy honor-system unlocks ("stripe:cs_...") to signed tokens via
+// the worker once it exists, so early buyers keep Pro without noticing.
+export async function isLicensed(): Promise<boolean> {
+  const value = stored();
+  if (!value) return false;
+
+  if (value.startsWith("stripe:")) {
+    if (!WORKER_URL) return true; // launch-era behavior
+    const sid = value.slice("stripe:".length);
+    if (/^cs_(live|test)_/.test(sid)) {
+      return activateSessionWithWorker(sid);
+    }
+    return false;
+  }
+
+  return (await verifyToken(value)).valid;
+}
+
+export async function requestRestoreEmail(
+  email: string,
+): Promise<{ ok: boolean; message: string }> {
+  if (!WORKER_URL) {
     return {
       ok: false,
-      message: data?.error ?? "That key doesn't look valid.",
+      message: "Restore isn't available yet — email support with your receipt.",
+    };
+  }
+  try {
+    const res = await fetch(`${WORKER_URL}/restore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    return {
+      ok: res.ok,
+      message:
+        data.message ?? data.error ?? "Something went wrong — try again.",
     };
   } catch {
-    return {
-      ok: false,
-      message: "Couldn't reach the license server. Try again in a minute.",
-    };
+    return { ok: false, message: "Couldn't reach the license server." };
   }
 }

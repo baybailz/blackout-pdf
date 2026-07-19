@@ -13,9 +13,23 @@ merchant of record) wired into `src/config.ts`:
 - The payment link's after-payment setting redirects to
   `<site>/?checkout=success&session_id={CHECKOUT_SESSION_ID}`, which
   auto-activates Pro on the buyer's device (`src/license.ts`) — no backend.
-- Cross-device activation is manual for now (buyer emails their receipt).
-  If sales justify it, add a free Cloudflare Worker that verifies the
-  session id against Stripe and mints a signed license key.
+- **License worker (built, awaiting deploy):** `worker/` contains a
+  Cloudflare Worker that verifies checkout sessions against Stripe and mints
+  ECDSA-signed license tokens the client verifies with an embedded public
+  key — kills the fake-`?checkout=success` unlock and enables
+  restore-by-email. Go-live steps:
+  1. Create a free Cloudflare account.
+  2. Deploy: `CLOUDFLARE_API_TOKEN=<token> npx wrangler deploy` from
+     `worker/` (or set repo secret `CLOUDFLARE_API_TOKEN` + repo variable
+     `WORKER_DEPLOY_ENABLED=true` for auto-deploy via Actions).
+  3. In the CF dashboard add Worker secrets: `STRIPE_SECRET_KEY` (use a
+     RESTRICTED key: read-only Checkout Sessions + Customers),
+     `LICENSE_SIGNING_KEY` (from `D:\claude\output\
+     blackout-license-signing-key.txt`), optionally `RESEND_API_KEY`
+     (enables restore-purchase emails).
+  4. Set `WORKER_URL` in `src/config.ts` to the workers.dev URL and push.
+  Until step 4, the site keeps the launch-era honor-system unlock, and
+  legacy unlocks migrate to signed tokens automatically afterward.
 - To change the price: update it in Stripe AND `PRO_PRICE_LABEL` in
   `src/config.ts`.
 

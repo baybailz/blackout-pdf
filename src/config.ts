@@ -17,8 +17,24 @@ export const PRO_PRICE_LABEL = "$25";
 export const CHECKOUT_URL: string | null =
   "https://buy.stripe.com/fZucN53nTbrEbNWbEBcAo00";
 
-// Lemon Squeezy license validation (their /v1/licenses/validate endpoint is
-// public + CORS-enabled; no API key needed). Leave as-is.
+// License worker (the "bouncer"): verifies checkout sessions against Stripe
+// server-side and mints signed tokens. While null, the app falls back to the
+// launch-era honor-system redirect unlock. Set to the deployed workers.dev
+// URL (no trailing slash) to enforce real licensing.
+export const WORKER_URL: string | null = null;
+
+// Public half of the license signing keypair (worker holds the private half).
+// Verifies tokens locally — works offline, can't mint them.
+export const LICENSE_PUBLIC_KEY: JsonWebKey = {
+  key_ops: ["verify"],
+  ext: true,
+  kty: "EC",
+  x: "E3_xJzsr0uzyTsx4EvX4SyN8Ltaxg9Zmo5H_wJ88Abs",
+  y: "6TgGGKzJTzZht2EkzNtVrCWyzcN2cYmt5sjFLwKjdyw",
+  crv: "P-256",
+};
+
+// Lemon Squeezy license validation (kept for a potential non-Stripe future).
 export const LICENSE_VALIDATE_URL =
   "https://api.lemonsqueezy.com/v1/licenses/validate";
 
